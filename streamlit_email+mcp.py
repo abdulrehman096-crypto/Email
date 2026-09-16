@@ -25,12 +25,25 @@ def send_lead_to_crm(lead_name: str, email: str) -> str:
     """Simulate sending a lead to a CRM database."""
     return f"Successfully added lead {lead_name} ({email}) to CRM!"
 
+def get_email_credentials():
+    """Safely fetch secrets, with a fallback reminder if missing."""
+    try:
+        user = st.secrets["EMAIL_USER"]
+        password = st.secrets["EMAIL_PASSWORD"]
+        return user, password
+    except Exception:
+        # Fallback for local testing if secrets.toml isn't created yet
+        # (Replace these strings with your actual test credentials if needed locally)
+        return "your-email@gmail.com", "your-app-password"
+
 def send_multiple_emails(recipient_list: list, subject: str, body: str) -> str:
     """Sends the same email to multiple recipients in a loop using Streamlit Secrets."""
     results = []
     try:
-        sender_email = st.secrets["EMAIL_USER"]
-        sender_password = st.secrets["EMAIL_PASSWORD"]
+        sender_email, sender_password = get_email_credentials()
+        
+        if "your-email" in sender_email:
+            return "❌ Error: Please configure your `EMAIL_USER` and `EMAIL_PASSWORD` in Streamlit Secrets or your local `.streamlit/secrets.toml` file."
         
         yag = yagmail.SMTP(sender_email, sender_password)
         
@@ -70,7 +83,7 @@ if "messages" not in st.session_state:
 # Initialize email flow state variables if they don't exist
 if "email_flow_active" not in st.session_state:
     st.session_state.email_flow_active = False
-    st.session_state.email_step = 0  # 0: idle, 1: waiting for subject, 2: waiting for body
+    st.session_state.email_step = 0  # 0: idle, 1: waiting for recipient, 2: waiting for subject, 3: waiting for body
     st.session_state.temp_recipients = []
     st.session_state.temp_subject = ""
 
@@ -97,10 +110,8 @@ if prompt := st.chat_input("Ask me to send emails, add leads, or do math..."):
 
         # Step 1: Handling recipients
         elif st.session_state.email_flow_active and st.session_state.email_step == 1:
-            # Parse recipients (split by comma if multiple)
             raw_recipients = [e.strip() for e in prompt.split(",") if "@" in e]
             if not raw_recipients:
-                # Fallback if no '@' found, treat whole prompt as single email
                 raw_recipients = [prompt.strip()]
             
             st.session_state.temp_recipients = raw_recipients
@@ -128,11 +139,13 @@ if prompt := st.chat_input("Ask me to send emails, add leads, or do math..."):
                 send_result = send_multiple_emails(recipients, subject, body_text)
             else:
                 try:
-                    sender_email = st.secrets["EMAIL_USER"]
-                    sender_password = st.secrets["EMAIL_PASSWORD"]
-                    yag = yagmail.SMTP(sender_email, sender_password)
-                    yag.send(to=recipients[0], subject=subject, contents=body_text)
-                    send_result = f"✅ Sent successfully to {recipients[0]}"
+                    sender_email, sender_password = get_email_credentials()
+                    if "your-email" in sender_email:
+                        send_result = "❌ Error: Please configure your `EMAIL_USER` and `EMAIL_PASSWORD` in Streamlit Secrets."
+                    else:
+                        yag = yagmail.SMTP(sender_email, sender_password)
+                        yag.send(to=recipients[0], subject=subject, contents=body_text)
+                        send_result = f"✅ Sent successfully to {recipients[0]}"
                 except Exception as e:
                     send_result = f"❌ Failed to send: {str(e)}"
             
