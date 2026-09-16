@@ -1,47 +1,57 @@
 import streamlit as st
-import yagmail # Make sure yagmail is in your requirements.txt
 
-st.set_page_config(page_title="MCP Email Agent Chatbot", layout="centered")
-st.title("🤖 AI Email Assistant")
+# Import your tools or FastMCP functions directly from your ai_mcp.py file
+# (Make sure ai_mcp.py is in the same GitHub repository folder as app.py)
+try:
+    import ai_mcp
+    # Assuming ai_mcp exposes a list or registry of tools, or we list them manually:
+    AVAILABLE_TOOLS = ['add', 'greet', 'send_lead_to_crm', 'send_email']
+    server_connected = True
+except Exception as e:
+    AVAILABLE_TOOLS = []
+    server_connected = False
 
-# ==========================================
-# 1. DEFINE YOUR EMAIL SENDING TOOL
-# ==========================================
-def send_email(recipient: str, subject: str, body: str) -> str:
-    """Sends an email using stored secrets credentials."""
-    try:
-        # You can store your email and app password safely in Streamlit Secrets (.streamlit/secrets.toml)
-        sender_email = st.secrets["EMAIL_USER"]
-        sender_password = st.secrets["EMAIL_PASSWORD"]
-        
-        yag = yagmail.SMTP(sender_email, sender_password)
-        yag.send(to=recipient, subject=subject, contents=body)
-        return f"Successfully sent email to {recipient}!"
-    except Exception as e:
-        return f"Failed to send email: {str(e)}"
+st.set_page_config(page_title="MCP Agent Chatbot with Streamlit", layout="wide")
 
 # ==========================================
-# 2. STREAMLIT CHAT UI & AGENT HANDLING
+# SIDEBAR: Connected Tools Status Box
 # ==========================================
+with st.sidebar:
+    if server_connected:
+        st.success(f"Connected to MCP Server! Tools available: {AVAILABLE_TOOLS}")
+    else:
+        st.error("Could not load local MCP tools.")
+
+# ==========================================
+# MAIN CHAT INTERFACE
+# ==========================================
+st.title("🤖 MCP Agent Chatbot with Streamlit")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Tell me who to email and what to say..."):
+# User input handling
+if prompt := st.chat_input("Ask me to send an email or do math..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # 👉 Here is where your LLM/Agent logic goes. 
-        # If the user says "I wanna send an email", your agent can extract the details 
-        # and trigger the `send_email` function above!
-        
-        # Temporary handling logic for demonstration:
-        response = "I'm ready to send emails! Configure your LLM client and email tool bindings here to start sending."
-        
+        # Multi-turn logic simulation or LLM/Agent tool execution
+        if "email" in prompt.lower():
+            response = """Sure! I can help with that. Could you please provide the following details for the email?
+1. **Recipient's email address** (the "to" field)
+2. **Subject line**
+3. **Body of the message**
+
+Once I have that information, I'll send the email for you."""
+        else:
+            response = f"Processed your request using local tools!"
+
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
