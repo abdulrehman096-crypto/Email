@@ -1,58 +1,47 @@
 import streamlit as st
-from fastmcp import FastMCP # Or your standard tool definitions
-# Import your LLM/Agent libraries (e.g., LangChain, Groq, Google GenAI, etc.)
+import yagmail # Make sure yagmail is in your requirements.txt
 
-st.set_page_config(page_title="MCP Agent Chatbot with Streamlit", layout="centered")
-st.title("🤖 MCP Agent Chatbot with Streamlit")
-
-# ==========================================
-# 1. DEFINE OR IMPORT YOUR TOOLS DIRECTLY
-# ==========================================
-# Instead of running a separate server, define your tools 
-# as standard Python functions that your agent can call directly in-memory.
-
-def my_mcp_tool(query: str) -> str:
-    """Description of what your tool does."""
-    # Put your tool logic here (e.g., database queries, search, data processing)
-    return f"Processed result for: {query}"
-
-# If you were using FastMCP decorators, you can extract the underlying 
-# Python functions or bind them directly to your LangChain/LangGraph agent.
-
+st.set_page_config(page_title="MCP Email Agent Chatbot", layout="centered")
+st.title("🤖 AI Email Assistant")
 
 # ==========================================
-# 2. INITIALIZE YOUR AGENT / LLM CLIENT
+# 1. DEFINE YOUR EMAIL SENDING TOOL
 # ==========================================
-@st.cache_resource
-def load_agent():
-    # Initialize your model (Groq, Gemini, OpenAI, etc.) 
-    # and bind the local Python functions as tools here.
-    return "Agent Initialized"
-
-agent = load_agent()
-
+def send_email(recipient: str, subject: str, body: str) -> str:
+    """Sends an email using stored secrets credentials."""
+    try:
+        # You can store your email and app password safely in Streamlit Secrets (.streamlit/secrets.toml)
+        sender_email = st.secrets["EMAIL_USER"]
+        sender_password = st.secrets["EMAIL_PASSWORD"]
+        
+        yag = yagmail.SMTP(sender_email, sender_password)
+        yag.send(to=recipient, subject=subject, contents=body)
+        return f"Successfully sent email to {recipient}!"
+    except Exception as e:
+        return f"Failed to send email: {str(e)}"
 
 # ==========================================
-# 3. STREAMLIT CHAT UI INTERFACE
+# 2. STREAMLIT CHAT UI & AGENT HANDLING
 # ==========================================
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display prior chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Handle user input
-if prompt := st.chat_input("Ask your agent something..."):
+if prompt := st.chat_input("Tell me who to email and what to say..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # Run your agent logic locally without any port connection errors
-        # response = agent.run(prompt)
-        response = f"Echo from local agent: {prompt}" # Placeholder for your agent call
+        # 👉 Here is where your LLM/Agent logic goes. 
+        # If the user says "I wanna send an email", your agent can extract the details 
+        # and trigger the `send_email` function above!
+        
+        # Temporary handling logic for demonstration:
+        response = "I'm ready to send emails! Configure your LLM client and email tool bindings here to start sending."
         
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
